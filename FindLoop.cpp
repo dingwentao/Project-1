@@ -4,13 +4,17 @@
 #include <string>
 
 #define IF inputfilename
-#define OF "output"
+#define OF1 "output1"
+#define OF2 "output2"
+#define OF3 "test.mil"
 
 char *inputfilename;
 
 using namespace std;
 
-ofstream outputfile (OF);
+ofstream outputfile1 (OF1);
+ofstream outputfile2 (OF2);
+ofstream outputfile3 (OF3);
 
 typedef struct list
 {
@@ -55,7 +59,7 @@ void freearray(int **p, int n) //free matrix pointer
 	p=NULL;
 }
 
-void outputedge(int **edge, int n) //output edge given edge matrix[n][n], edge[i][j]=1 means there's an edge from BBi to BBj
+void outputedge(int **edge, int n, int flag) //output edge given edge matrix[n][n], edge[i][j]=1 means there's an edge from BBi to BBj
 {
 	int i, j, num=0;
 	for(i=0;i<n;i++)
@@ -64,7 +68,8 @@ void outputedge(int **edge, int n) //output edge given edge matrix[n][n], edge[i
 		{
 			if(edge[i][j]==1)
 			{
-				outputfile << "EDGE " << num <<": BB"<< i << " -> BB" << j << endl;
+				if (flag == 1) outputfile1 << "EDGE " << num <<": BB"<< i << " -> BB" << j << endl;
+				if (flag == 2) outputfile2 << "EDGE " << num <<": BB"<< i << " -> BB" << j << endl;
 				num++;
 			}
 		}
@@ -80,7 +85,7 @@ void outputDOM(int **DOM, int n) //output DOM(i) given edge matrix[n][n], DOM[i]
 		{
 			if(DOM[i][j]==1)
 			{
-				outputfile << "DOM(" << i << ")=" << j << endl;
+				outputfile2 << "DOM(" << i << ")=" << j << endl;
 			}
 		}
 	}
@@ -152,9 +157,9 @@ void printmatrix(int **matrix, int n) //output DOM(i) given edge matrix[n][n], D
 	{
 		for(j=0;j<n;j++)
 		{
-			outputfile << matrix[i][j] << "\t";
+			outputfile2 << matrix[i][j] << "\t";
 		}
-		outputfile << endl;
+		outputfile2 << endl;
 	}
 } 
 
@@ -239,13 +244,13 @@ void outputloop(int **edge, int **backedge, int n)
 				linklist *loophead, *p;
 				loophead=loop(i, j, edge, n);
 				p=loophead->next;
-				outputfile << "LOOP " << num << ":";
+				outputfile1 << "LOOP " << num << ":";
 				while(p!=NULL)
 				{
-					outputfile << " BB" <<  p->number;
+					outputfile1 << " BB" <<  p->number;
 					p=p->next;
 				}
-				outputfile << endl;
+				outputfile1 << endl;
 				num++;
 			}
 		}
@@ -345,12 +350,12 @@ void initialization(int **edge, int n)
 		  if (s1.compare(1,2,":=") == 0)
 		  {
 			  j = unconditionalbranch (s1);
-			  if (i!=j) edge[i][j] = 1;
+			  edge[i][j] = 1;
 		  }
 		  else
 		  {
 			  j = conditionalbranch (s1);
-			  if (i-1!=j) edge[i-1][j] = 1;
+			  edge[i-1][j] = 1;
 			  edge[i-1][i] = 1;
 		  }
 
@@ -371,7 +376,7 @@ void outputblock()
 	while (s1.compare(0, 7, ": START") != 0)
 	  getline (inputfile,s1);
 
-	outputfile << "BB0" << endl;
+	outputfile1 << "BB0" << endl;
 	while (!inputfile.eof())
 	{
 		getline (inputfile,s2);
@@ -380,22 +385,75 @@ void outputblock()
 			n++;
 			if (s1.compare(0,3,": L") == 0)
 			{
-				outputfile << "BB" << n << endl;
-				outputfile << s1 << endl;
+				outputfile1 << "BB" << n << endl;
+				outputfile1 << s1 << endl;
 			}
 			else
 			{
-				outputfile << s1 << endl;
-				outputfile << "BB" << n << endl;
+				outputfile1 << s1 << endl;
+				outputfile1 << "BB" << n << endl;
 			}
 		}
 		else
-		  outputfile << s1 << endl;
+		  outputfile1 << s1 << endl;
 		s1 = s2;
 	}
 	
 	inputfile.close();
 }
+
+void ModifyIR(int n)
+{
+	string s1, s2;
+	int i;
+
+	ifstream inputfile (IF);
+	ofstream outputfile3 (OF3);
+	getline (inputfile, s1);
+	while (s1.compare(0, 1 ,"") != 0)
+	{
+		outputfile3 << s1 << endl;
+		getline (inputfile, s1);
+	}
+	
+	for (i = 0; i < n; i++)
+	  outputfile3 << "\t.\t" << "_c" << i << endl;
+
+	for (i = 0; i < n; i++)
+	  outputfile3 <<"\t.\t" << "tt" << i << endl;
+
+	while (s1.compare(0, 7, ": START") != 0)
+	{
+		outputfile3 << s1 << endl;
+		getline (inputfile, s1);
+	}
+	outputfile3 << s1 << endl;
+    outputfile3 << "\t+\ttt0" << ", _c0" << ", 1" << endl;
+	outputfile3 << "\t=\t_c0" << ", tt0" << endl;
+	
+	i = 1;
+	getline (inputfile, s1);
+	while (!inputfile.eof())
+	{
+		getline (inputfile,s2);
+		if ((judgeflag (s1)) && !(judgeflag(s2)))
+		{
+			outputfile3 << s1 << endl;
+			outputfile3 << "\t+\ttt" << i << ", _c" << i << ", 1" << endl;
+			outputfile3 << "\t=\t_c" << i << ", tt" << i << endl;
+			i++;
+		}
+		else outputfile3 << s1 << endl;
+		s1 = s2;
+	}
+
+	for (i = 0; i < n; i++)
+	  outputfile3 <<"\t.>\t" << "_c" << i << endl;
+	
+	inputfile.close();
+	outputfile3.close();
+}
+
 int main(int argc, char *argv[])
 {
 	int **DOM, **EDGE, **BACKEDGE;
@@ -412,38 +470,45 @@ int main(int argc, char *argv[])
 
 	n = blocknumber();
 
-	DOM=creatematrix(n);
-	EDGE=creatematrix(n);
-	BACKEDGE=creatematrix(n);
+	DOM = creatematrix(n);
+	EDGE = creatematrix(n);
+	BACKEDGE = creatematrix(n);
 	
 	initialization(EDGE, n);
 
 	outputblock();
 	
-	outputfile << "===============\n";
-	outputfile << "ALL EDGES:\n";
-	outputedge(EDGE,n);
+	outputfile1 << endl;
+	outputfile1 << "ALL EDGES:" << endl;
+	outputedge(EDGE,n,1);
+
+	outputfile2 << "BASIC BLOCK NUMBER:" << endl;
+	outputfile2 << n << endl;
 
 	DOM=dominator(EDGE,n);
-//	outputfile << "===============\nALL DOM SETS:\n";
+//	outputfile2 << endl << "ALL DOM SETS:" << endl;
 //	outputDOM(DOM,n);
 	
 	BACKEDGE=backedge(EDGE, DOM, n);
-//	outputfile << "===============\nALL BACK EDGES:\n";
-//	outputedge(BACKEDGE,n);
+//	outputfile2 << endl << "ALL BACK EDGES:" << endl;
+//	outputedge(BACKEDGE,n,2);
 	
-//	outputfile << "===============\nEDGE MATRIX:\n";
-//	printmatrix(EDGE,n);
-//	outputfile << "===============\nDOM MATRIX:\n";
-//	printmatrix(DOM,n);
-//	outputfile << "===============\nBACKEDGE MATRIX:\n";
-//	printmatrix(BACKEDGE,n);
-	
-	outputfile << "===============\n";
-	outputfile << "ALL LOOPS:\n";
-	outputloop(EDGE, BACKEDGE, n);
-	//system("pause");
+	outputfile2 << endl << "EDGE MATRIX:" << endl;
+	printmatrix(EDGE,n);
 
-	outputfile.close();
+//	outputfile2 << endl << "DOM MATRIX:" << endl;
+//	printmatrix(DOM,n);
+	
+	outputfile2 << endl << "BACKEDGE MATRIX:" << endl;
+	printmatrix(BACKEDGE,n);	
+
+	outputfile1 << endl;
+	outputfile1 << "ALL LOOPS:" << endl;
+	outputloop(EDGE, BACKEDGE, n);
+	
+	ModifyIR (n);
+
+	outputfile1.close();
+	outputfile2.close();
 	return 0;
 }
