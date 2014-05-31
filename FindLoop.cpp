@@ -7,6 +7,7 @@
 #define OF1 "output1"
 #define OF2 "output2"
 #define OF3 "test.mil"
+#define OF4 "test_im.mil"
 
 char *inputfilename;
 
@@ -14,7 +15,6 @@ using namespace std;
 
 ofstream outputfile1 (OF1);
 ofstream outputfile2 (OF2);
-ofstream outputfile3 (OF3);
 
 typedef struct list
 {
@@ -280,6 +280,7 @@ int blocknumber ()
 	{
 		getline (inputfile,s2);
 		if ((judgeflag (s1)) && !(judgeflag(s2))) n++;
+		if (s1.compare (0,3,": L") == 0 && s2.compare(0,3,": L") == 0) n++;
 		s1 = s2;
 	}
 	
@@ -299,6 +300,7 @@ int unconditionalbranch (string s)
 	{
 		getline (inputfile,s2);
 		if ((judgeflag (s1)) && !(judgeflag(s2))) i++;
+		if (s1.compare (0,3,": L") == 0 && s2.compare(0,3,": L") == 0) i++;
 		if (s1.compare(0,3,": L") == 0)
 		  if (s1.compare(2, s1.length()-2, s, 4, s1.length()-2) == 0) return i;
 		s1 = s2;
@@ -318,6 +320,7 @@ int conditionalbranch (string s)
 	{
 		getline (inputfile,s2);
 		if ((judgeflag (s1)) && !(judgeflag(s2))) i++;
+		if (s1.compare (0,3,": L") == 0 && s2.compare(0,3,": L") == 0) i++;
 		if (s1.compare(0,3,": L") == 0)
 		  if (s1.compare(2, s1.length()-2, s, 5, s1.length()-2) == 0) return i;
 		s1 = s2;
@@ -343,6 +346,7 @@ void initialization(int **edge, int n)
 	{
 		getline (inputfile,s2);
 		if ((judgeflag (s1)) && !(judgeflag(s2))) i++;
+		if (s1.compare (0,3,": L") == 0 && s2.compare(0,3,": L") == 0) i++;
 		if (!(judgeflag (s1)) && (judgeflag(s2)))
 		  if (s2.compare(0,3,": L") == 0) edge[i][i+1] = 1;
 
@@ -350,13 +354,22 @@ void initialization(int **edge, int n)
 		  if (s1.compare(1,2,":=") == 0)
 		  {
 			  j = unconditionalbranch (s1);
-			  edge[i][j] = 1;
+			  if (!judgeflag(s2)) edge[i-1][j] = 1;
+			  else edge[i][j] = 1;
 		  }
 		  else
 		  {
 			  j = conditionalbranch (s1);
-			  edge[i-1][j] = 1;
-			  edge[i-1][i] = 1;
+			  if (!judgeflag(s2))
+			  {
+				  edge[i-1][j] = 1;
+				  edge[i-1][i] = 1;
+			  }
+			  else
+			  {
+				  edge[i][j] = 1;
+				  edge[i][j] = 1;
+			  }
 		  }
 
 		s1 = s2;
@@ -395,20 +408,28 @@ void outputblock()
 			}
 		}
 		else
-		  outputfile1 << s1 << endl;
+		  if (s1.compare (0,3,": L") == 0 && s2.compare(0,3,": L") == 0)
+		  {
+			  n++;
+			  outputfile1 << "BB" << n << endl;
+			  outputfile1 << s1 << endl;
+		  }
+		  else
+			outputfile1 << s1 << endl;
 		s1 = s2;
 	}
 	
 	inputfile.close();
 }
 
-void ModifyIR(int n)
+void ModifyIR(int **edge, int n)
 {
 	string s1, s2;
-	int i;
+	int i, j, label;
 
 	ifstream inputfile (IF);
 	ofstream outputfile3 (OF3);
+	ofstream outputfile4 (OF4);
 	getline (inputfile, s1);
 	while (s1.compare(0, 1 ,"") != 0)
 	{
@@ -417,38 +438,79 @@ void ModifyIR(int n)
 	}
 	
 	for (i = 0; i < n; i++)
-	  outputfile3 << "\t.\t" << "_c" << i << endl;
+	  for (j = 0; j < n; j++)
+		if (edge[i][j]) outputfile3 << "\t.\t" << "_c" << i*n+j << endl;
 
 	for (i = 0; i < n; i++)
-	  outputfile3 <<"\t.\t" << "tt" << i << endl;
-
-	while (s1.compare(0, 7, ": START") != 0)
-	{
-		outputfile3 << s1 << endl;
-		getline (inputfile, s1);
-	}
-	outputfile3 << s1 << endl;
-    outputfile3 << "\t+\ttt0" << ", _c0" << ", 1" << endl;
-	outputfile3 << "\t=\t_c0" << ", tt0" << endl;
+	  for (j = 0; j < n; j++)
+		if (edge[i][j]) outputfile3 <<"\t.\t" << "tt" << i*n+j << endl;
 	
-	i = 1;
-	getline (inputfile, s1);
+	i = j = 0;
+	label = n;
 	while (!inputfile.eof())
 	{
 		getline (inputfile,s2);
-		if ((judgeflag (s1)) && !(judgeflag(s2)))
+		if ((judgeflag (s1)) && !(judgeflag(s2))) i++;
+		if (!(judgeflag (s1)) && (judgeflag(s2)))
 		{
+		  if (s2.compare(0,3,": L") == 0) 
+		  {
+			  outputfile3 << s1 << endl;
+			  outputfile3 << "\t+\ttt" << i*n+i+1 << ", _c" << i*n+i+1 << ", 1" << endl;
+			  outputfile3 << "\t=\t_c" << i*n+i+1 << ", tt" << i*n+i+1 << endl;
+		  }
+		  else
 			outputfile3 << s1 << endl;
-			outputfile3 << "\t+\ttt" << i << ", _c" << i << ", 1" << endl;
-			outputfile3 << "\t=\t_c" << i << ", tt" << i << endl;
-			i++;
 		}
-		else outputfile3 << s1 << endl;
+		else
+		  if (judgeflag (s1) && (s1.compare(0,3,": L") != 0))
+		  {
+			  if (s1.compare(1,2,":=") == 0)
+			  {
+				  j = unconditionalbranch (s1);
+				  label++;
+				  outputfile3 << "\t:=\tL" << label << endl;
+				  outputfile4 << ": L" << label << endl;
+				  outputfile4 << "\t+\ttt" << i*n+j << ", _c" << i*n+j << ", 1" << endl;
+				  outputfile4 << "\t=\t_c" << i*n+j << ", tt" << i*n+j << endl;
+				  outputfile4 << s1 << endl;
+			  }
+			  else
+			  {
+				  j = conditionalbranch (s1);
+				  label++;
+				  outputfile3 << "\t?:=\tL" << label;
+				  
+				  outputfile3 << s1.substr(s1.find(",")) << endl;
+				  outputfile4 << ": L" << label << endl; 
+				  outputfile4 << "\t+\ttt" << (i-1)*n+j << ", _c" << (i-1)*n+j << ", 1" << endl;
+				  outputfile4 << "\t=\t_c" << (i-1)*n+j << ", tt" << (i-1)*n+j << endl;
+				  outputfile4 << "\t:=\t" << s1.substr(5, s1.find(",")-5) << endl;
+			  
+				  outputfile3 << "\t+\ttt" << (i-1)*n+i << ", _c" << (i-1)*n+i << ", 1" << endl;
+				  outputfile3 << "\t=\t_c" << (i-1)*n+i << ", tt" << (i-1)*n+i << endl;
+			  }
+		  }
+		  else
+			outputfile3 << s1 << endl;
+
 		s1 = s2;
 	}
 
+	inputfile.close();
+	outputfile4.close();
+
+	inputfile.open (OF4);
+	getline (inputfile, s1);
+	while (!inputfile.eof())
+	{
+	  outputfile3 << s1 << endl;
+	  getline (inputfile, s1);
+	}
+
 	for (i = 0; i < n; i++)
-	  outputfile3 <<"\t.>\t" << "_c" << i << endl;
+	  for (j = 0; j < n; j++)
+		if (edge[i][j]) outputfile3 <<"\t.>\t" << "_c" << i*n+j << endl;
 	
 	inputfile.close();
 	outputfile3.close();
@@ -506,7 +568,7 @@ int main(int argc, char *argv[])
 	outputfile1 << "ALL LOOPS:" << endl;
 	outputloop(EDGE, BACKEDGE, n);
 	
-	ModifyIR (n);
+	ModifyIR (EDGE, n);
 
 	outputfile1.close();
 	outputfile2.close();
