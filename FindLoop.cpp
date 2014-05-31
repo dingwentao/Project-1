@@ -302,7 +302,7 @@ int unconditionalbranch (string s)
 		if ((judgeflag (s1)) && !(judgeflag(s2))) i++;
 		if (s1.compare (0,3,": L") == 0 && s2.compare(0,3,": L") == 0) i++;
 		if (s1.compare(0,3,": L") == 0)
-		  if (s1.compare(2, s1.length()-2, s, 4, s1.length()-2) == 0) return i;
+		  if (s1.compare(s1.find("L"), s1.length()-s1.find("L"), s, s.find("L"), s.find(",")-s.find("L")) == 0) return i;
 		s1 = s2;
 	}
 
@@ -322,7 +322,7 @@ int conditionalbranch (string s)
 		if ((judgeflag (s1)) && !(judgeflag(s2))) i++;
 		if (s1.compare (0,3,": L") == 0 && s2.compare(0,3,": L") == 0) i++;
 		if (s1.compare(0,3,": L") == 0)
-		  if (s1.compare(2, s1.length()-2, s, 5, s1.length()-2) == 0) return i;
+		  if (s1.compare(s1.find("L"), s1.length()-s1.find("L"), s, s.find("L"), s.find(",")-s.find("L")) == 0) return i;
 		s1 = s2;
 	}
 
@@ -496,6 +496,9 @@ void ModifyIR(int **edge, int n)
 
 		s1 = s2;
 	}
+	
+	label++;
+	outputfile3 << "\t:=\tL" << label << endl;
 
 	inputfile.close();
 	outputfile4.close();
@@ -508,10 +511,13 @@ void ModifyIR(int **edge, int n)
 	  getline (inputfile, s1);
 	}
 
+	outputfile3 << ": L" << label << endl;
+	
 	for (i = 0; i < n; i++)
 	  for (j = 0; j < n; j++)
 		if (edge[i][j]) outputfile3 <<"\t.>\t" << "_c" << i*n+j << endl;
 	
+
 	inputfile.close();
 	outputfile3.close();
 }
