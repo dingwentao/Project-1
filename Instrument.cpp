@@ -4,8 +4,8 @@
 #include <string>
 
 #define IF inputfilename
-#define OF1 "output1"
-#define OF2 "output2"
+#define OF1 "analysis_output"
+#define OF2 "output"
 #define OF3 "test.mil"
 #define OF4 "test_im.mil"
 
