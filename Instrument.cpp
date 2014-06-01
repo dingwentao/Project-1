@@ -414,6 +414,8 @@ void ModifyIR(int **edge, int n)
 		getline (inputfile, s1);
 	}
 	
+	outputfile3 << "\t.\t" << "_constant" << endl;
+
 	for (i = 0; i < n; i++)
 	  for (j = 0; j < n; j++)
 		if (edge[i][j]) outputfile3 << "\t.\t" << "_c" << i*n+j << endl;
@@ -506,6 +508,8 @@ void ModifyIR(int **edge, int n)
 	}
 
 	outputfile3 << ": L" << label << endl;
+	outputfile3 << "\t=\t" << "_constant, 1111" << endl;
+	outputfile3 << "\t.>\t" << "_constant" << endl;
 	
 	for (i = 0; i < n; i++)
 	  for (j = 0; j < n; j++)
