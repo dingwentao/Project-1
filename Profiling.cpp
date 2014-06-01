@@ -4,7 +4,7 @@
 #include <string>
 
 #define IF1 inputfilename
-#define IF2 "output2"
+#define IF2 "output"
 #define OF "trace_output"
 
 char *inputfilename;
